@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+
+# downloads files specified in spec files
+
+# config options for this host ?
+[[ -f /etc/obs/services/download_files ]] && . /etc/obs/services/download_files
+
+# config options for this user ?
+[[ -f "$HOME"/.obs/download_files ]] && . "$HOME"/.obs/download_files
+
+DORECOMPRESS=""
+ENFORCELOCAL=""
+ENFORCEUPSTREAM=""
+while test $# -gt 0; do
+  case $1 in
+    *-recompress)
+      if [[ "$2" == "yes" ]]; then
+        DORECOMPRESS="yes"
+      fi
+      shift
+    ;;
+    *-enforcelocal)
+      if [[ "$2" == "yes" ]]; then
+        ENFORCELOCAL="yes"
+      fi
+      shift
+    ;;
+    *-enforceupstream)
+      if [[ "$2" == "yes" ]]; then
+        ENFORCEUPSTREAM="yes"
+      fi
+      shift
+    ;;
+    *-outdir)
+      MYOUTDIR="$2"
+      shift
+    ;;
+    *)
+      echo "Unknown parameter $1."
+      echo "This service is not accepting parameters currently."
+      exit 1
+    ;;
+  esac
+  shift
+done
+
+if [[ ! -d "${MYOUTDIR}" ]]; then
+  echo "ERROR: output directory \"${MYOUTDIR}\" does not exist"
+  exit 1
+fi
+
+function uncompress_file() {
+  local input=$1
+  local output=$2
+  local uncompress="cat"
+  local basename="${input}"
+
+  if [[ "${input%.gz}" != "${input}" ]]; then
+    uncompress="gunzip -c"
+    basename="${input%.gz}"
+  elif [[ "${input%.tgz}" != "${input}" ]]; then
+    uncompress="gunzip -c"
+    basename="${input%.tgz}.tar"
+  elif [[ "${input%.bz2}" != "${input}" ]]; then
+    uncompress="bunzip2 -c"
+    basename="${input%.bz2}"
+  elif [[ "${FILE%.xz}" != "${input}" ]]; then
+    uncompress="xz -dc"
+    basename="${input%.xz}"
+  fi
+
+  $uncompress "$input" > "$output"
+  echo $basename
+}
+
+
+default_config="/usr/lib/build/configs/sl12.3.conf"
+[ -e "/usr/lib/build/configs/default.conf" ] && default_config="/usr/lib/build/configs/default.conf"
+
+RETURN=0
+for i in *.spec PKGBUILD; do
+  test -e "$i" || continue
+
+  for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources`; do
+    WGET="/usr/bin/wget -4 --no-check-certificate --timeout=30 -q --tries=2 --no-directories"
+    MYCACHEDIRECTORY="$CACHEDIRECTORY"
+    PROTOCOL="${url%%:*}"
+    SAMEFILEAFTERCOMPRESSION=
+    [[ "${PROTOCOL}" != "http" && "${PROTOCOL}" != "https" && "${PROTOCOL}" != "ftp" ]] && continue
+
+    # determine intended filename from URL fragment, e.g. 
+    # https://www.example.com/gpgkeys.asc#/%{name}.keyring
+    FRAGMENT=`echo $url | perl -MURI -le 'chomp($url = <>); print URI->new($url)->fragment'`
+    BN=`basename "$url"`
+    # fragment must begin with "/" and only contain a base name
+    if [ /"$BN" == "$FRAGMENT" ]; then
+      WGET="$WGET -O $BN"
+    fi
+    #
+      
+    # We do not tell the server that we are an OBS tool by default anymore,
+    # because too many sites just have a white list, but they accept wget
+    # WGET="$WGET -U 'OBS-wget'"
+
+    cd "$MYOUTDIR"
+
+    # check local cache if configured
+    HASH=$(echo "$url" | sha256sum | cut -d\  -f 1)
+    if [ -n "$MYCACHEDIRECTORY" -a -f "$MYCACHEDIRECTORY/file/$HASH" ]; then
+      RECOMPRESS=""
+      FILE=$(cat "$MYCACHEDIRECTORY/filename/$HASH")
+      echo "INFO: Taking file from local cache $FILE"
+      cp -a "$MYCACHEDIRECTORY/file/$HASH" ./"$FILE"
+    elif [ -z "$DORECOMPRESS" ]; then
+      if ! $WGET "$url$urlextension" -O "${url##*/}"; then
+        echo "ERROR: Failed to download \"$url\""
+        exit 1
+      fi
+      RECOMPRESS=""
+      FILE="${url##*/}"
+    else
+      FORMAT="${url##*\.}"
+      if $WGET "$url" -O "${url}"; then
+        RECOMPRESS=""
+        FILE="${url}"
+      elif $WGET "${url%$FORMAT}gz" -O "${url%$FORMAT}gz"; then
+        RECOMPRESS="$FORMAT"
+        FILE="${url%$FORMAT}gz"
+      elif $WGET "${url%$FORMAT}bz2" -O "${url%$FORMAT}bz2"; then
+        RECOMPRESS="$FORMAT"
+        FILE="${url%$FORMAT}bz2"
+      elif $WGET "${url%$FORMAT}xz" -O "${url%$FORMAT}xz"; then
+        RECOMPRESS="$FORMAT"
+        FILE="${url%$FORMAT}xz"
+      else
+        echo "ERROR: Failed to download $url or any other compression format"
+        exit 1
+      fi
+      FILE="${FILE##*/}"
+    fi
+
+    # fill local cache, if configured
+    if [[ -n "$MYCACHEDIRECTORY" && ! -f "$MYCACHEDIRECTORY/file/$HASH" ]]; then
+      cp -a "$FILE" "$MYCACHEDIRECTORY/file/$HASH" && \
+      echo "$FILE" > "$MYCACHEDIRECTORY/filename/$HASH"
+    fi
+
+    if [[ -n "$RECOMPRESS" ]]; then
+      tempfile=`mktemp`
+      file_name=`uncompress_file "$FILE" "$tempfile"`
+
+      # uncompress the old file also to compare
+      tempoldfile=`mktemp`
+      uncompress_file "$OLDPWD/${url##*/}" "$tempoldfile" > /dev/null
+
+      # do not create new file, if identical
+      if ! cmp "$tempfile" "$tempoldfile"; then
+        if [ "$RECOMPRESS" == "gz" ]; then
+          COMPRESS="gzip -c -"
+          SUFFIX=".gz"
+        elif [ "$RECOMPRESS" == "bz2" ]; then
+          COMPRESS="bzip2 -c -"
+          SUFFIX=".bz2"
+        elif [ "$RECOMPRESS" == "xz" ]; then
+          COMPRESS="xz -c -"
+          SUFFIX=".xz"
+        elif [ "$RECOMPRESS" == "none" ]; then
+          COMPRESS="cat -"
+          SUFFIX=""
+        else
+          echo "ERROR: Unknown compression \"$RECOMPRESS\""
+          RETURN=1
+        fi
+
+        # do the compression
+        cat "$tempfile" | $COMPRESS > "$file_name$SUFFIX" || RETURN=1
+        rm "$FILE" # remove downloaded file
+	FILE="$file_name$SUFFIX"
+      else
+        # original file name
+        FILE="${url##*/}"
+        SAMEFILEAFTERCOMPRESSION=1
+      fi
+
+      # cleanup
+      rm -f "$tempfile" "$tempoldfile"
+    fi
+
+    # remove all file files which are indentical to committed files, but not the same instance (when --outdir .)
+    if [ -f "$OLDPWD/$FILE" ]; then
+       if [ ! "$FILE" -ef "$OLDPWD/$FILE" ]; then
+         if [ -z "$SAMEFILEAFTERCOMPRESSION" ]; then
+           if cmp "$FILE" "$OLDPWD/$FILE"; then
+              rm "$FILE"
+           elif [ -n "$ENFORCEUPSTREAM" ]; then
+             echo "ERROR: download_files is configured to fail when the upstream file is different then the committed file... this is the case!"
+             exit 1
+           fi
+         fi
+       fi
+    elif [ -n "$ENFORCELOCAL" ]; then
+      echo "ERROR: download_files is configured to fail when the file was not committed... this is the case!"
+      exit 1
+    fi
+
+    cd - > /dev/null
+  done
+done
+
+exit $RETURN
+
