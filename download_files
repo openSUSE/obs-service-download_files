@@ -11,6 +11,9 @@
 DORECOMPRESS=""
 ENFORCELOCAL=""
 ENFORCEUPSTREAM=""
+CHANGES_GENERATE=disable
+CHANGES_AUTHOR=""
+CHANGES_LINES_MAX=30
 while test $# -gt 0; do
   case $1 in
     *-recompress)
@@ -33,6 +36,18 @@ while test $# -gt 0; do
     ;;
     *-outdir)
       MYOUTDIR="$2"
+      shift
+    ;;
+    *-changesgenerate)
+      CHANGES_GENERATE="$2"
+      shift
+    ;;
+    *-changesauthor)
+      CHANGES_AUTHOR="$2"
+      shift
+    ;;
+    *-changeslinesmax)
+      CHANGES_LINES_MAX="$2"
       shift
     ;;
     *)
@@ -73,6 +88,48 @@ function uncompress_file() {
   echo $basename
 }
 
+function write_changes() {
+  spec_file_name=$1
+
+  if [ "$spec_file_name" = "PKGBUILD" ] ; then
+    echo "No support for writing PKGBUILD changes"
+    return
+  fi
+  if [ ${#CHANGES_LINES[@]} -eq 0 ] ; then
+    echo "No changes since $CHANGES_REVISION, skipping changes file generation"
+    return
+  fi
+
+  if [ -z "$CHANGES_AUTHOR" ] ; then
+    OSCRC="$HOME/.oscrc"
+    if [ -f $OSCRC ] ; then
+      CHANGES_AUTHOR=$(grep -e '^email.*=' $OSCRC | head -n1 | cut -d"=" -f2)
+    else
+      CHANGES_AUTHOR="opensuse-packaging@opensuse.org"
+    fi
+  fi
+
+  change_entry="-------------------------------------------------------------------
+$(LC_ALL=POSIX TZ=UTC date) - ${CHANGES_AUTHOR}
+
+- Update to version $NEW_VERSION:"
+  for change in "${CHANGES_LINES[@]}" ; do
+    # Skip some common boilerplate pattern:
+    case $change in
+      ==*|--*|CHANGES) continue ;;
+    esac
+    change_entry="$change_entry
+  $change"
+  done
+  change_entry="$change_entry
+"
+
+  # Prepend change entry to current changes file
+  changes_file="$SRCDIR/${spec_file_name%".spec"}.changes"
+  tmpfile=$(mktemp)
+  echo "$change_entry" | cat - $changes_file > $tmpfile && mv $tmpfile $MYOUTDIR/$(basename $changes_file)
+}
+
 
 default_config="/usr/lib/build/configs/sl12.3.conf"
 [ -e "/usr/lib/build/configs/default.conf" ] && default_config="/usr/lib/build/configs/default.conf"
@@ -101,6 +158,18 @@ for i in *.spec PKGBUILD; do
     # We do not tell the server that we are an OBS tool by default anymore,
     # because too many sites just have a white list, but they accept wget
     # WGET="$WGET -U 'OBS-wget'"
+
+
+    if [ "$CHANGES_GENERATE" == "enable" ]; then
+      # Check old tarball if there are any changes files present, take the first one (if any)
+      #changes_filename=$(tar -tf $BN* 2>/dev/null | sed -e "s|[^/]*/||" | grep -iE "changelog|news|changes" | head -n1)
+      OLD_CHANGES_FILENAME=$(tar -tf $BN* 2>/dev/null | grep -iE "/changelog|news|changes" | head -n1)
+      if [ -n "$OLD_CHANGES_FILENAME" ] ; then
+        OLD_CHANGES_FILE=$(tar -xvf $BN* $OLD_CHANGES_FILENAME)
+        OLD_CHANGES_BASEDIR=$(echo $OLD_CHANGES_FILE | sed -e "s|/.*||")
+      fi
+    fi
+    SRCDIR=$PWD
 
     cd "$MYOUTDIR"
 
@@ -143,6 +212,26 @@ for i in *.spec PKGBUILD; do
     if [[ -n "$MYCACHEDIRECTORY" && ! -f "$MYCACHEDIRECTORY/file/$HASH" ]]; then
       cp -a "$FILE" "$MYCACHEDIRECTORY/file/$HASH" && \
       echo "$FILE" > "$MYCACHEDIRECTORY/filename/$HASH"
+    fi
+
+    if [ "$CHANGES_GENERATE" == "enable" -a -n "$OLD_CHANGES_FILE" ]; then
+      # Try to find the same changes file in the new tarball
+      CHANGES_FILENAME=$(tar -tf $BN* 2>/dev/null | grep -iE "/changelog|news|changes" | head -n1)
+      if [ -n "$CHANGES_FILENAME" ] ; then
+        CHANGES_FILE=$(tar -xvf $BN* $CHANGES_FILENAME)
+        CHANGES_BASEDIR=$(echo $CHANGES_FILE | sed -e "s|/.*||")
+        NEW_VERSION=${CHANGES_BASEDIR#$BN-}  # Find out what version we updated to
+        # Check if both old and new aren't the same files:
+        if [ "$OLD_CHANGES_FILE" != "$CHANGES_FILE" ] ; then
+          lines=$(diff -u $SRCDIR/$OLD_CHANGES_FILE $CHANGES_FILE | grep -E "^\+.*" | grep -vE "^\+\+\+" | head -n $CHANGES_LINES_MAX | cut -d"+" -f2-)
+          OLD_IFS="$IFS"
+          IFS=$'\n' CHANGES_LINES=( $lines )
+          IFS="$OLD_IFS"
+          rm -rf $CHANGES_BASEDIR || :
+        fi
+      fi
+      rm -rf $SRCDIR/$OLD_CHANGES_BASEDIR || :
+      rm -rf $OLD_CHANGES_BASEDIR || :
     fi
 
     if [[ -n "$RECOMPRESS" ]]; then
@@ -201,6 +290,10 @@ for i in *.spec PKGBUILD; do
     elif [ -n "$ENFORCELOCAL" ]; then
       echo "ERROR: download_files is configured to fail when the file was not committed... this is the case!"
       exit 1
+    fi
+
+    if [ "$CHANGES_GENERATE" == "enable" ] ; then
+      write_changes $i
     fi
 
     cd - > /dev/null
