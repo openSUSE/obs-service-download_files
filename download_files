@@ -282,7 +282,7 @@ for i in *.spec PKGBUILD; do
            if cmp "$FILE" "$OLDPWD/$FILE"; then
               rm "$FILE"
            elif [ -n "$ENFORCEUPSTREAM" ]; then
-             echo "ERROR: download_files is configured to fail when the upstream file is different then the committed file... this is the case!"
+             echo "ERROR: download_files is configured to fail when the upstream file is different than the committed file... this is the case!"
              exit 1
            fi
          fi
