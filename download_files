@@ -162,7 +162,7 @@ for i in *.spec PKGBUILD; do
 
     if [ "$CHANGES_GENERATE" == "enable" ]; then
       # Check old tarball if there are any changes files present, take the first one (if any)
-      #changes_filename=$(tar -tf $BN* 2>/dev/null | sed -e "s|[^/]*/||" | grep -iE "changelog|news|changes" | head -n1)
+      #changes_filename=$(tar -tf $BN* 2>/dev/null | sed -e "s|[^/]*/||" | grep -iE 'changelog$|news$|changes$' | head -n1)
       OLD_CHANGES_FILENAME=$(tar -tf $BN* 2>/dev/null | grep -iE "/changelog|news|changes" | head -n1)
       if [ -n "$OLD_CHANGES_FILENAME" ] ; then
         OLD_CHANGES_FILE=$(tar -xvf $BN* $OLD_CHANGES_FILENAME)
