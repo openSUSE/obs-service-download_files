@@ -14,16 +14,16 @@
     <description>Fail when the file was not commited, download will happen anyway to verify that file is identical with upstream. Package state will become "broken".</description>
     <allowedvalue>yes</allowedvalue>
   </parameter>
-  <param name="changesgenerate">
+  <parameter name="changesgenerate">
     <description>Whether or not to generate changes file entries from special files in the tarball (such as NEWS, CHANGES* or ChangeLog).  Default is 'disable'.</description>
     <allowedvalue>enable</allowedvalue>
     <allowedvalue>disable</allowedvalue>
-  </param>
-  <param name="changesauthor">
+  </parameter>
+  <parameter name="changesauthor">
     <description>The author of the changes file entry to be written, defaults to first email entry in ~/.oscrc or "opensuse-packaging@opensuse.org" if there is no .oscrc found.</description>
-  </param>
-  <param name="changeslinesmax">
+  </parameter>
+  <parameter name="changeslinesmax">
     <description>The maximum amount of changes lines that are written (the rest is dropped). Defaults to 30.</description>
-  </param>
+  </parameter>
 </service>
 
