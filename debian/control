@@ -1,0 +1,15 @@
+Source: obs-service-download-files
+Maintainer: Hib Eris <hib@hiberis.nl>
+Section: devel
+Priority: extra
+Build-Depends: debhelper (>= 7)
+Standards-Version: 3.9.6
+Homepage: https://github.com/openSUSE/obs-service-download_files
+
+Package: obs-service-download-files
+Architecture: all
+Description: An OBS source service: download files
+ This is a source service for openSUSE Build Service.
+ .
+ This service is parsing all spec files and downloads all Source files which
+ are specified via a http, https or ftp url.
