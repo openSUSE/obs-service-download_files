@@ -88,6 +88,12 @@ function uncompress_file() {
   echo $basename
 }
 
+function changes_filename()
+{
+  # Check old tarball if there are any changes files present, take the first one (if any)
+  tar -tf "$@" 2>/dev/null | grep -iE "/changelog|/news|/changes" | head -n1
+}
+
 function write_changes() {
   spec_file_name=$1
 
@@ -161,9 +167,7 @@ for i in *.spec PKGBUILD; do
 
 
     if [ "$CHANGES_GENERATE" == "enable" ]; then
-      # Check old tarball if there are any changes files present, take the first one (if any)
-      #changes_filename=$(tar -tf $BN* 2>/dev/null | sed -e "s|[^/]*/||" | grep -iE 'changelog$|news$|changes$' | head -n1)
-      OLD_CHANGES_FILENAME=$(tar -tf $BN* 2>/dev/null | grep -iE "/changelog|news|changes" | head -n1)
+      OLD_CHANGES_FILENAME=$(changes_filename $BN*)
       if [ -n "$OLD_CHANGES_FILENAME" ] ; then
         OLD_CHANGES_FILE=$(tar -xvf $BN* $OLD_CHANGES_FILENAME)
         OLD_CHANGES_BASEDIR=$(echo $OLD_CHANGES_FILE | sed -e "s|/.*||")
@@ -216,7 +220,7 @@ for i in *.spec PKGBUILD; do
 
     if [ "$CHANGES_GENERATE" == "enable" -a -n "$OLD_CHANGES_FILE" ]; then
       # Try to find the same changes file in the new tarball
-      CHANGES_FILENAME=$(tar -tf $BN* 2>/dev/null | grep -iE "/changelog|news|changes" | head -n1)
+      CHANGES_FILENAME=$(changes_filename $BN*)
       if [ -n "$CHANGES_FILENAME" ] ; then
         CHANGES_FILE=$(tar -xvf $BN* $CHANGES_FILENAME)
         CHANGES_BASEDIR=$(echo $CHANGES_FILE | sed -e "s|/.*||")
