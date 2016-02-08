@@ -88,8 +88,7 @@ function uncompress_file() {
   echo "$basename"
 }
 
-function find_changes_filename()
-{
+function find_changes_filename() {
   local dir=$1
   local bn=$2
   # expand
@@ -97,8 +96,7 @@ function find_changes_filename()
   tar -tf "$bn" 2>/dev/null | grep -iE "/changelog|/news|/changes" | head -n1
 }
 
-function extract_changes()
-{
+function extract_changes() {
   local dir=$1
   local bn=$2
   local cf=$3
@@ -106,18 +104,6 @@ function extract_changes()
   # expand
   for bn in "$dir/"$bn* ; do : ; done
   tar -xf "$bn" -O -- "$cf" > "$tf"
-}
-
-function write_changes() {
-  local spec_file_name=$1
-  local my_url=$2
-  local bn=${my_url##*/}
-
-  if [ "$spec_file_name" = "PKGBUILD" ] ; then
-    echo "No support for writing PKGBUILD changes"
-    return
-  fi
-
 }
 
 function write_changes() {
