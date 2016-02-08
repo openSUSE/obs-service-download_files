@@ -85,31 +85,93 @@ function uncompress_file() {
   fi
 
   $uncompress "$input" > "$output"
-  echo $basename
+  echo "$basename"
 }
 
-function changes_filename()
+function find_changes_filename()
 {
-  # Check old tarball if there are any changes files present, take the first one (if any)
-  tar -tf -- "$@" 2>/dev/null | grep -iE "/changelog|/news|/changes" | head -n1
+  local dir=$1
+  local bn=$2
+  # expand
+  for bn in "$dir/"$bn* ; do : ; done
+  tar -tf "$bn" 2>/dev/null | grep -iE "/changelog|/news|/changes" | head -n1
+}
+
+function extract_changes()
+{
+  local dir=$1
+  local bn=$2
+  local cf=$3
+  local tf=$4
+  # expand
+  for bn in "$dir/"$bn* ; do : ; done
+  tar -xf "$bn" -O -- "$cf" > "$tf"
 }
 
 function write_changes() {
-  spec_file_name=$1
+  local spec_file_name=$1
+  local my_url=$2
+  local bn=${my_url##*/}
 
   if [ "$spec_file_name" = "PKGBUILD" ] ; then
     echo "No support for writing PKGBUILD changes"
     return
   fi
+
+}
+
+function write_changes() {
+  local spec_file_name=$1
+  local my_url=$2
+  local bn=${my_url##*/}
+
+  if [ "$spec_file_name" = "PKGBUILD" ] ; then
+    echo "No support for writing PKGBUILD changes"
+    return
+  fi
+
+  # find old changes
+  local oldchangesfile=$(find_changes_filename "$SRCDIR"   "$bn")
+  local newchangesfile=$(find_changes_filename "$MYOUTDIR" "$bn")
+  
+  # they need to exist both
+  if test -z "$oldchangesfile" -o -z "$newchangesfile" ; then
+    return
+  fi
+
+  # they need to be different (why?)
+  if test "$oldchangesfile" = "$newchangesfile" ; then
+    return
+  fi
+
+  # find new version
+  NEW_VERSION=${newchangesfile%%/*}
+  NEW_VERSION=${NEW_VERSION#$bn-}
+
+  # extract em
+  local oldchanges=$(mktemp)
+  local newchanges=$(mktemp)
+  extract_changes "$SRCDIR"   "$bn" "$oldchangesfile" "$oldchanges"
+  extract_changes "$MYOUTDIR" "$bn" "$newchangesfile" "$newchanges"
+
+  # diff
+  lines=$(diff -u $oldchanges $newchanges | grep -E "^\+.*" | grep -vE "^\+\+\+" | head -n "$CHANGES_LINES_MAX" | cut -d"+" -f2-)
+  OLD_IFS="$IFS"
+  IFS=$'\n' CHANGES_LINES=( $lines )
+  IFS="$OLD_IFS"
+
+  # clean up
+  rm -f "$oldchanges" "$newchanges"
+
   if [ ${#CHANGES_LINES[@]} -eq 0 ] ; then
-    echo "No changes since $CHANGES_REVISION, skipping changes file generation"
+    echo "No changes found, skipping changes file generation"
     return
   fi
 
   if [ -z "$CHANGES_AUTHOR" ] ; then
     OSCRC="$HOME/.oscrc"
-    if [ -f $OSCRC ] ; then
-      CHANGES_AUTHOR=$(grep -e '^email.*=' $OSCRC | head -n1 | cut -d"=" -f2)
+    if [ -f "$OSCRC" ] ; then
+      CHANGES_AUTHOR=$(grep -e '^email.*=' "$OSCRC" | head -n1 | cut -d"=" -f2)
     else
       CHANGES_AUTHOR="opensuse-packaging@opensuse.org"
     fi
@@ -133,12 +195,14 @@ $(LC_ALL=POSIX TZ=UTC date) - ${CHANGES_AUTHOR}
   # Prepend change entry to current changes file
   changes_file="$SRCDIR/${spec_file_name%".spec"}.changes"
   tmpfile=$(mktemp)
-  echo "$change_entry" | cat - $changes_file > $tmpfile && mv -- "$tmpfile" "$MYOUTDIR/$(basename $changes_file)"
+  echo "$change_entry" | cat - $changes_file > "$tmpfile" && mv -- "$tmpfile" "$MYOUTDIR/$(basename $changes_file)"
 }
 
 
 default_config="/usr/lib/build/configs/sl12.3.conf"
 [ -e "/usr/lib/build/configs/default.conf" ] && default_config="/usr/lib/build/configs/default.conf"
+
+SRCDIR=$PWD
 
 RETURN=0
 for i in *.spec PKGBUILD; do
@@ -151,65 +215,48 @@ for i in *.spec PKGBUILD; do
     SAMEFILEAFTERCOMPRESSION=
     [[ "${PROTOCOL}" != "http" && "${PROTOCOL}" != "https" && "${PROTOCOL}" != "ftp" ]] && continue
 
-    # determine intended filename from URL fragment, e.g. 
-    # https://www.example.com/gpgkeys.asc#/%{name}.keyring
-    FRAGMENT=`echo $url | perl -MURI -le 'chomp($url = <>); print URI->new($url)->fragment'`
     BN=`basename "$url"`
-    # fragment must begin with "/" and only contain a base name
-    if [ /"$BN" == "$FRAGMENT" ]; then
-      WGET="$WGET -O $BN"
-    fi
-    #
       
     # We do not tell the server that we are an OBS tool by default anymore,
     # because too many sites just have a white list, but they accept wget
     # WGET="$WGET -U 'OBS-wget'"
 
 
-    if [ "$CHANGES_GENERATE" == "enable" ]; then
-      OLD_CHANGES_FILENAME=$(changes_filename $BN*)
-      if [ -n "$OLD_CHANGES_FILENAME" ] ; then
-        OLD_CHANGES_FILE=$(tar -xvf -- $BN* "$OLD_CHANGES_FILENAME")
-        OLD_CHANGES_BASEDIR=$(echo $OLD_CHANGES_FILE | sed -e "s|/.*||")
-      fi
-    fi
-    SRCDIR=$PWD
-
     cd "$MYOUTDIR"
 
     # check local cache if configured
     HASH=$(echo "$url" | sha256sum | cut -d\  -f 1)
     if [ -n "$MYCACHEDIRECTORY" -a -f "$MYCACHEDIRECTORY/file/$HASH" ]; then
-      RECOMPRESS=""
+      RECOMPRESS=
       FILE=$(cat "$MYCACHEDIRECTORY/filename/$HASH")
+      FILE="${FILE##*/}"
       echo "INFO: Taking file from local cache $FILE"
       cp -a -- "$MYCACHEDIRECTORY/file/$HASH" ./"$FILE"
     elif [ -z "$DORECOMPRESS" ]; then
-      if ! $WGET "$url$urlextension" -O "${url##*/}"; then
+      FILE="${url##*/}"
+      if ! $WGET "$url$urlextension" -O "$FILE"; then
         echo "ERROR: Failed to download \"$url\""
         exit 1
       fi
-      RECOMPRESS=""
-      FILE="${url##*/}"
+      RECOMPRESS=
     else
+      FILE="${url##*/}"
       FORMAT="${url##*\.}"
-      if $WGET "$url" -O "${url}"; then
-        RECOMPRESS=""
-        FILE="${url}"
-      elif $WGET "${url%$FORMAT}gz" -O "${url%$FORMAT}gz"; then
+      if $WGET "$url" -O "$FILE"; then
+        RECOMPRESS=
+      elif $WGET "${url%$FORMAT}.gz" -O "${FILE%$FORMAT}.gz"; then
         RECOMPRESS="$FORMAT"
-        FILE="${url%$FORMAT}gz"
-      elif $WGET "${url%$FORMAT}bz2" -O "${url%$FORMAT}bz2"; then
+        FILE="${FILE%$FORMAT}.gz"
+      elif $WGET "${url%$FORMAT}.bz2" -O "${FILE%$FORMAT}.bz2"; then
         RECOMPRESS="$FORMAT"
-        FILE="${url%$FORMAT}bz2"
-      elif $WGET "${url%$FORMAT}xz" -O "${url%$FORMAT}xz"; then
+        FILE="${FILE%$FORMAT}.bz2"
+      elif $WGET "${url%$FORMAT}.xz" -O "${FILE%$FORMAT}.xz"; then
         RECOMPRESS="$FORMAT"
-        FILE="${url%$FORMAT}xz"
+        FILE="${FILE%$FORMAT}.xz"
       else
         echo "ERROR: Failed to download $url or any other compression format"
         exit 1
       fi
-      FILE="${FILE##*/}"
     fi
 
     # fill local cache, if configured
@@ -218,33 +265,13 @@ for i in *.spec PKGBUILD; do
       echo "$FILE" > "$MYCACHEDIRECTORY/filename/$HASH"
     fi
 
-    if [ "$CHANGES_GENERATE" == "enable" -a -n "$OLD_CHANGES_FILE" ]; then
-      # Try to find the same changes file in the new tarball
-      CHANGES_FILENAME=$(changes_filename $BN*)
-      if [ -n "$CHANGES_FILENAME" ] ; then
-        CHANGES_FILE=$(tar -xvf -- $BN* "$CHANGES_FILENAME")
-        CHANGES_BASEDIR=$(echo $CHANGES_FILE | sed -e "s|/.*||")
-        NEW_VERSION=${CHANGES_BASEDIR#$BN-}  # Find out what version we updated to
-        # Check if both old and new aren't the same files:
-        if [ "$OLD_CHANGES_FILE" != "$CHANGES_FILE" ] ; then
-          lines=$(diff -u $SRCDIR/$OLD_CHANGES_FILE $CHANGES_FILE | grep -E "^\+.*" | grep -vE "^\+\+\+" | head -n $CHANGES_LINES_MAX | cut -d"+" -f2-)
-          OLD_IFS="$IFS"
-          IFS=$'\n' CHANGES_LINES=( $lines )
-          IFS="$OLD_IFS"
-          rm -rf -- "$CHANGES_BASEDIR" || :
-        fi
-      fi
-      rm -rf -- "$SRCDIR/$OLD_CHANGES_BASEDIR" || :
-      rm -rf -- "$OLD_CHANGES_BASEDIR" || :
-    fi
-
-    if [[ -n "$RECOMPRESS" ]]; then
+    if [ -n "$RECOMPRESS" ]; then
       tempfile=`mktemp`
       file_name=`uncompress_file "$FILE" "$tempfile"`
 
       # uncompress the old file also to compare
       tempoldfile=`mktemp`
-      uncompress_file "$OLDPWD/${url##*/}" "$tempoldfile" > /dev/null
+      uncompress_file "$SRCDIR/${url##*/}" "$tempoldfile" > /dev/null
 
       # do not create new file, if identical
       if ! cmp "$tempfile" "$tempoldfile"; then
@@ -280,10 +307,10 @@ for i in *.spec PKGBUILD; do
     fi
 
     # remove all file files which are indentical to committed files, but not the same instance (when --outdir .)
-    if [ -f "$OLDPWD/$FILE" ]; then
-       if [ ! "$FILE" -ef "$OLDPWD/$FILE" ]; then
+    if [ -f "$SRCDIR/$FILE" ]; then
+       if [ ! "$FILE" -ef "$SRCDIR/$FILE" ]; then
          if [ -z "$SAMEFILEAFTERCOMPRESSION" ]; then
-           if cmp "$FILE" "$OLDPWD/$FILE"; then
+           if cmp "$FILE" "$SRCDIR/$FILE" 2>/dev/null; then
               rm "$FILE"
            elif [ -n "$ENFORCEUPSTREAM" ]; then
              echo "ERROR: download_files is configured to fail when the upstream file is different than the committed file... this is the case!"
@@ -297,7 +324,7 @@ for i in *.spec PKGBUILD; do
     fi
 
     if [ "$CHANGES_GENERATE" == "enable" ] ; then
-      write_changes $i
+      write_changes "$i" "$url"
     fi
 
     cd - > /dev/null
