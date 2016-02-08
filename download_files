@@ -91,7 +91,7 @@ function uncompress_file() {
 function changes_filename()
 {
   # Check old tarball if there are any changes files present, take the first one (if any)
-  tar -tf "$@" 2>/dev/null | grep -iE "/changelog|/news|/changes" | head -n1
+  tar -tf -- "$@" 2>/dev/null | grep -iE "/changelog|/news|/changes" | head -n1
 }
 
 function write_changes() {
@@ -133,7 +133,7 @@ $(LC_ALL=POSIX TZ=UTC date) - ${CHANGES_AUTHOR}
   # Prepend change entry to current changes file
   changes_file="$SRCDIR/${spec_file_name%".spec"}.changes"
   tmpfile=$(mktemp)
-  echo "$change_entry" | cat - $changes_file > $tmpfile && mv $tmpfile $MYOUTDIR/$(basename $changes_file)
+  echo "$change_entry" | cat - $changes_file > $tmpfile && mv -- "$tmpfile" "$MYOUTDIR/$(basename $changes_file)"
 }
 
 
@@ -169,7 +169,7 @@ for i in *.spec PKGBUILD; do
     if [ "$CHANGES_GENERATE" == "enable" ]; then
       OLD_CHANGES_FILENAME=$(changes_filename $BN*)
       if [ -n "$OLD_CHANGES_FILENAME" ] ; then
-        OLD_CHANGES_FILE=$(tar -xvf $BN* $OLD_CHANGES_FILENAME)
+        OLD_CHANGES_FILE=$(tar -xvf -- $BN* "$OLD_CHANGES_FILENAME")
         OLD_CHANGES_BASEDIR=$(echo $OLD_CHANGES_FILE | sed -e "s|/.*||")
       fi
     fi
@@ -183,7 +183,7 @@ for i in *.spec PKGBUILD; do
       RECOMPRESS=""
       FILE=$(cat "$MYCACHEDIRECTORY/filename/$HASH")
       echo "INFO: Taking file from local cache $FILE"
-      cp -a "$MYCACHEDIRECTORY/file/$HASH" ./"$FILE"
+      cp -a -- "$MYCACHEDIRECTORY/file/$HASH" ./"$FILE"
     elif [ -z "$DORECOMPRESS" ]; then
       if ! $WGET "$url$urlextension" -O "${url##*/}"; then
         echo "ERROR: Failed to download \"$url\""
@@ -214,7 +214,7 @@ for i in *.spec PKGBUILD; do
 
     # fill local cache, if configured
     if [[ -n "$MYCACHEDIRECTORY" && ! -f "$MYCACHEDIRECTORY/file/$HASH" ]]; then
-      cp -a "$FILE" "$MYCACHEDIRECTORY/file/$HASH" && \
+      cp -a -- "$FILE" "$MYCACHEDIRECTORY/file/$HASH" && \
       echo "$FILE" > "$MYCACHEDIRECTORY/filename/$HASH"
     fi
 
@@ -222,7 +222,7 @@ for i in *.spec PKGBUILD; do
       # Try to find the same changes file in the new tarball
       CHANGES_FILENAME=$(changes_filename $BN*)
       if [ -n "$CHANGES_FILENAME" ] ; then
-        CHANGES_FILE=$(tar -xvf $BN* $CHANGES_FILENAME)
+        CHANGES_FILE=$(tar -xvf -- $BN* "$CHANGES_FILENAME")
         CHANGES_BASEDIR=$(echo $CHANGES_FILE | sed -e "s|/.*||")
         NEW_VERSION=${CHANGES_BASEDIR#$BN-}  # Find out what version we updated to
         # Check if both old and new aren't the same files:
@@ -231,11 +231,11 @@ for i in *.spec PKGBUILD; do
           OLD_IFS="$IFS"
           IFS=$'\n' CHANGES_LINES=( $lines )
           IFS="$OLD_IFS"
-          rm -rf $CHANGES_BASEDIR || :
+          rm -rf -- "$CHANGES_BASEDIR" || :
         fi
       fi
-      rm -rf $SRCDIR/$OLD_CHANGES_BASEDIR || :
-      rm -rf $OLD_CHANGES_BASEDIR || :
+      rm -rf -- "$SRCDIR/$OLD_CHANGES_BASEDIR" || :
+      rm -rf -- "$OLD_CHANGES_BASEDIR" || :
     fi
 
     if [[ -n "$RECOMPRESS" ]]; then
@@ -276,7 +276,7 @@ for i in *.spec PKGBUILD; do
       fi
 
       # cleanup
-      rm -f "$tempfile" "$tempoldfile"
+      rm -f -- "$tempfile" "$tempoldfile"
     fi
 
     # remove all file files which are indentical to committed files, but not the same instance (when --outdir .)
