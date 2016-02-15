@@ -1,12 +1,16 @@
 #!/usr/bin/env perl
+use strict;
+use warnings;
 use FindBin;
 use Cwd;
 
 use Path::Class qw/dir/;
-use Test::More tests => 3;
+use Test::More tests => 5;
 
 {
 package MyWebServer;
+use strict;
+use warnings;
 
 use HTTP::Server::Simple::CGI;
 use Path::Class qw/file/;
@@ -85,9 +89,12 @@ my $tar = "tar tvjf ".$outdir->stringify."/Test-Simple-1.001014.tar.bz2";
 `$tar`;
 ok($? == 0,"Checking extraction");
 
+ok((-f $outdir->stringify."/patch1.diff"),"Checking patch1");
+ok((-f $outdir->stringify."/patch2.diff"),"Checking patch2");
+
 # checking cleanup
 my @fl = $outdir->children();
-ok(@fl == 1,"Checking cleanup");
+ok(@fl == 3,"Checking cleanup");
 
 # cleanup
 $outdir->rmtree;

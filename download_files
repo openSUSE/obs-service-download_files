@@ -200,7 +200,7 @@ RETURN=0
 for i in *.spec PKGBUILD; do
   test -e "$i" || continue
 
-  for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources`; do
+  for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources` `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" patches`; do
     WGET="/usr/bin/wget -4 --no-check-certificate --timeout=30 -q --tries=2 --no-directories"
     MYCACHEDIRECTORY="$CACHEDIRECTORY"
     PROTOCOL="${url%%:*}"
