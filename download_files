@@ -272,9 +272,9 @@ for i in *.spec PKGBUILD; do
 
         # do not create new file, if identical
         if cmp "$tempfile" "$tempoldfile"; then
-					SKIP_RECOMPRESS=1
-				fi
-			fi
+          SKIP_RECOMPRESS=1
+        fi
+      fi
 
       if [[ $SKIP_RECOMPRESS == 0 ]];then
         if [ "$RECOMPRESS" == "gz" ]; then
