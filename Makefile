@@ -17,4 +17,7 @@ install:
 	install -d $(DESTDIR)$(servicecachedir)/download_files/file
 	install -d $(DESTDIR)$(servicecachedir)/download_files/filename
 
-.PHONY: all install
+test:
+	prove -v t/*.t
+
+.PHONY: all install test

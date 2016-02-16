@@ -85,6 +85,12 @@ function uncompress_file() {
   fi
 
   $uncompress "$input" > "$output"
+
+  if [[ $? -gt 0 ]];then
+    echo "Error while uncompress $input"
+    exit 1
+  fi
+
   echo "$basename"
 }
 
@@ -226,19 +232,20 @@ for i in *.spec PKGBUILD; do
       fi
       RECOMPRESS=
     else
+
       FILE="${url##*/}"
       FORMAT="${url##*\.}"
       if $WGET "$url" -O "$FILE"; then
         RECOMPRESS=
-      elif $WGET "${url%$FORMAT}.gz" -O "${FILE%$FORMAT}.gz"; then
+      elif $WGET "${url%\.$FORMAT}.gz" -O "${FILE%\.$FORMAT}.gz"; then
         RECOMPRESS="$FORMAT"
-        FILE="${FILE%$FORMAT}.gz"
-      elif $WGET "${url%$FORMAT}.bz2" -O "${FILE%$FORMAT}.bz2"; then
+        FILE="${FILE%\.$FORMAT}.gz"
+      elif $WGET "${url%\.$FORMAT}.bz2" -O "${FILE%\.$FORMAT}.bz2"; then
         RECOMPRESS="$FORMAT"
-        FILE="${FILE%$FORMAT}.bz2"
-      elif $WGET "${url%$FORMAT}.xz" -O "${FILE%$FORMAT}.xz"; then
+        FILE="${FILE%\.$FORMAT}.bz2"
+      elif $WGET "${url%\.$FORMAT}.xz" -O "${FILE%\.$FORMAT}.xz"; then
         RECOMPRESS="$FORMAT"
-        FILE="${FILE%$FORMAT}.xz"
+        FILE="${FILE%\.$FORMAT}.xz"
       else
         echo "ERROR: Failed to download $url or any other compression format"
         exit 1
@@ -254,13 +261,22 @@ for i in *.spec PKGBUILD; do
     if [ -n "$RECOMPRESS" ]; then
       tempfile=`mktemp`
       file_name=`uncompress_file "$FILE" "$tempfile"`
+			SKIP_RECOMPRESS=0
 
-      # uncompress the old file also to compare
-      tempoldfile=`mktemp`
-      uncompress_file "$SRCDIR/${url##*/}" "$tempoldfile" > /dev/null
+			old_file="$SRCDIR/${url##*/}"
 
-      # do not create new file, if identical
-      if ! cmp "$tempfile" "$tempoldfile"; then
+			if [ -f $old_file ];then
+        # uncompress the old file also to compare
+        tempoldfile=`mktemp`
+        uncompress_file "$old_file" "$tempoldfile" > /dev/null
+
+        # do not create new file, if identical
+        if cmp "$tempfile" "$tempoldfile"; then
+          SKIP_RECOMPRESS=1
+        fi
+      fi
+
+      if [[ $SKIP_RECOMPRESS == 0 ]];then
         if [ "$RECOMPRESS" == "gz" ]; then
           COMPRESS="gzip -c -"
           SUFFIX=".gz"
@@ -281,7 +297,7 @@ for i in *.spec PKGBUILD; do
         # do the compression
         cat "$tempfile" | $COMPRESS > "$file_name$SUFFIX" || RETURN=1
         rm "$FILE" # remove downloaded file
-	FILE="$file_name$SUFFIX"
+        FILE="$file_name$SUFFIX"
       else
         # original file name
         FILE="${url##*/}"
