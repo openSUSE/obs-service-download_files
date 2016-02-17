@@ -1,0 +1,14 @@
+diff --git a/t/test.spec b/t/test.spec
+index 7225066..3ab8fc8 100644
+--- a/t/test.spec
++++ b/t/test.spec
+@@ -23,7 +23,8 @@ Summary:
+ Url:
+ Group:
+ Source:		http://localhost:8080/data/%{name}-%{version}.tar.bz2
+-Patch:
++Patch:    http://localhost:8080/data/patch1.diff
++Patch1:    http://localhost:8080/data/patch2.diff
+ BuildRequires:
+ PreReq:
+ Provides:

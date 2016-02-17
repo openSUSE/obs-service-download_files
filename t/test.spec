@@ -23,7 +23,8 @@ Summary:
 Url:
 Group:
 Source:		http://localhost:8080/data/%{name}-%{version}.tar.bz2
-Patch:
+Patch:    http://localhost:8080/data/patch1.diff
+Patch1:    http://localhost:8080/data/patch2.diff
 BuildRequires:
 PreReq:
 Provides:
