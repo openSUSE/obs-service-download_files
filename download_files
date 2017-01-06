@@ -203,12 +203,22 @@ for i in *.spec PKGBUILD; do
   for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources` `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" patches`; do
     WGET="/usr/bin/wget -4 --no-check-certificate --timeout=30 -q --tries=2 --no-directories"
     MYCACHEDIRECTORY="$CACHEDIRECTORY"
+
+    if [ "$i" -eq PKGBUILD ]; then
+      # Handle special case for PKGBUILD
+      # URLs in source may have declaration of wishing filename
+      # in style filename.ext::some://url
+      FILE="${url%%::*}"
+      RENAME_TO="$FILE"
+      url="${url#*::}"
+    fi
+
+    FILE="${FILE:-${url##*/}}"
     PROTOCOL="${url%%:*}"
+
     SAMEFILEAFTERCOMPRESSION=
     [[ "${PROTOCOL}" != "http" && "${PROTOCOL}" != "https" && "${PROTOCOL}" != "ftp" ]] && continue
 
-    BN=`basename "$url"`
-      
     # We do not tell the server that we are an OBS tool by default anymore,
     # because too many sites just have a white list, but they accept wget
     # WGET="$WGET -U 'OBS-wget'"
@@ -220,20 +230,17 @@ for i in *.spec PKGBUILD; do
     HASH=$(echo "$url" | sha256sum | cut -d\  -f 1)
     if [ -n "$MYCACHEDIRECTORY" -a -f "$MYCACHEDIRECTORY/file/$HASH" ]; then
       RECOMPRESS=
-      FILE=$(cat "$MYCACHEDIRECTORY/filename/$HASH")
-      FILE="${FILE##*/}"
-      echo "INFO: Taking file from local cache $FILE"
+      _cached=$(cat "$MYCACHEDIRECTORY/filename/$HASH")
+      FILE="${RENAME_TO:-${_cached##*/}}"
+      echo "INFO: Taking file from local cache $_cached as $FILE"
       cp -a -- "$MYCACHEDIRECTORY/file/$HASH" ./"$FILE"
     elif [ -z "$DORECOMPRESS" ]; then
-      FILE="${url##*/}"
       if ! $WGET "$url$urlextension" -O "$FILE"; then
         echo "ERROR: Failed to download \"$url\""
         exit 1
       fi
       RECOMPRESS=
     else
-
-      FILE="${url##*/}"
       FORMAT="${url##*\.}"
       if $WGET "$url" -O "$FILE"; then
         RECOMPRESS=
@@ -300,7 +307,7 @@ for i in *.spec PKGBUILD; do
         FILE="$file_name$SUFFIX"
       else
         # original file name
-        FILE="${url##*/}"
+        FILE="${RENAME_TO:-${url##*/}}"
         SAMEFILEAFTERCOMPRESSION=1
       fi
 
