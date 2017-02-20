@@ -207,6 +207,10 @@ for i in *.spec PKGBUILD; do
     SAMEFILEAFTERCOMPRESSION=
     [[ "${PROTOCOL}" != "http" && "${PROTOCOL}" != "https" && "${PROTOCOL}" != "ftp" ]] && continue
 
+    # If file name has been specified in the Source: tag use it (Format: Source:  <URL>[#/filename]).
+    FILE=${url##*#/}
+    url=${url%#/*}
+
     BN=`basename "$url"`
       
     # We do not tell the server that we are an OBS tool by default anymore,
@@ -225,7 +229,7 @@ for i in *.spec PKGBUILD; do
       echo "INFO: Taking file from local cache $FILE"
       cp -a -- "$MYCACHEDIRECTORY/file/$HASH" ./"$FILE"
     elif [ -z "$DORECOMPRESS" ]; then
-      FILE="${url##*/}"
+      [ -z "$FILE" ] && FILE="${url##*/}"
       if ! $WGET "$url$urlextension" -O "$FILE"; then
         echo "ERROR: Failed to download \"$url\""
         exit 1
@@ -233,7 +237,7 @@ for i in *.spec PKGBUILD; do
       RECOMPRESS=
     else
 
-      FILE="${url##*/}"
+      [ -z "$FILE" ] && FILE="${url##*/}"
       FORMAT="${url##*\.}"
       if $WGET "$url" -O "$FILE"; then
         RECOMPRESS=
