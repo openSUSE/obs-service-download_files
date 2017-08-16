@@ -14,39 +14,57 @@ ENFORCEUPSTREAM=""
 CHANGES_GENERATE=disable
 CHANGES_AUTHOR=""
 CHANGES_LINES_MAX=30
+
+WGET="/usr/bin/wget --timeout=30 -q --tries=2 --no-directories"
+# We do not tell the server that we are an OBS tool by default anymore,
+# because too many sites just have a white list, but they accept wget
+# WGET="$WGET -U 'OBS-wget'"
+
 while test $# -gt 0; do
   case $1 in
-    *-recompress)
+    --enforceipv4)
+      if [[ "$2" == "enable" ]]; then
+        WGET="$WGET -4"
+      fi
+      shift
+    ;;
+    --sslvalidation)
+      if [[ "$2" == "disable" ]]; then
+        NOSSLVALIDATION="yes"
+      fi
+      shift
+    ;;
+    --recompress)
       if [[ "$2" == "yes" ]]; then
         DORECOMPRESS="yes"
       fi
       shift
     ;;
-    *-enforcelocal)
+    --enforcelocal)
       if [[ "$2" == "yes" ]]; then
         ENFORCELOCAL="yes"
       fi
       shift
     ;;
-    *-enforceupstream)
+    --enforceupstream)
       if [[ "$2" == "yes" ]]; then
         ENFORCEUPSTREAM="yes"
       fi
       shift
     ;;
-    *-outdir)
+    --outdir)
       MYOUTDIR="$2"
       shift
     ;;
-    *-changesgenerate)
+    --changesgenerate)
       CHANGES_GENERATE="$2"
       shift
     ;;
-    *-changesauthor)
+    --changesauthor)
       CHANGES_AUTHOR="$2"
       shift
     ;;
-    *-changeslinesmax)
+    --changeslinesmax)
       CHANGES_LINES_MAX="$2"
       shift
     ;;
@@ -62,6 +80,10 @@ done
 if [[ ! -d "${MYOUTDIR}" ]]; then
   echo "ERROR: output directory \"${MYOUTDIR}\" does not exist"
   exit 1
+fi
+
+if [[ -n "$NOSSLVALIDATION" ]]; then
+  WGET="$WGET --no-check-certificate"
 fi
 
 function uncompress_file() {
@@ -201,7 +223,7 @@ for i in *.spec PKGBUILD; do
   test -e "$i" || continue
 
   for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources` `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" patches`; do
-    WGET="/usr/bin/wget -4 --no-check-certificate --timeout=30 -q --tries=2 --no-directories"
+   
     MYCACHEDIRECTORY="$CACHEDIRECTORY"
     PROTOCOL="${url%%:*}"
     SAMEFILEAFTERCOMPRESSION=
@@ -209,11 +231,6 @@ for i in *.spec PKGBUILD; do
 
     BN=`basename "$url"`
       
-    # We do not tell the server that we are an OBS tool by default anymore,
-    # because too many sites just have a white list, but they accept wget
-    # WGET="$WGET -U 'OBS-wget'"
-
-
     cd "$MYOUTDIR"
 
     # check local cache if configured
@@ -261,11 +278,9 @@ for i in *.spec PKGBUILD; do
     if [ -n "$RECOMPRESS" ]; then
       tempfile=`mktemp`
       file_name=`uncompress_file "$FILE" "$tempfile"`
-			SKIP_RECOMPRESS=0
-
-			old_file="$SRCDIR/${url##*/}"
-
-			if [ -f $old_file ];then
+      SKIP_RECOMPRESS=0
+      old_file="$SRCDIR/${url##*/}"
+      if [ -f $old_file ];then
         # uncompress the old file also to compare
         tempoldfile=`mktemp`
         uncompress_file "$old_file" "$tempoldfile" > /dev/null
