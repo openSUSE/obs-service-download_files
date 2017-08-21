@@ -6,6 +6,16 @@
     <description>In case the right compression is not available on server, do recompress the file as needed.</description>
     <allowedvalue>yes</allowedvalue>
   </parameter>
+  <parameter name="enforceipv4">
+    <description>Enforce IPv4 hostname resolution. This is currently the default due to too many invalid configured servers.</description>
+    <allowedvalue>enable</allowedvalue>
+    <allowedvalue>disable</allowedvalue>
+  </parameter>
+  <parameter name="sslvalidation">
+    <description>Disable SSL verification on download.</description>
+    <allowedvalue>enable</allowedvalue>
+    <allowedvalue>disable</allowedvalue>
+  </parameter>
   <parameter name="enforceupstream">
     <description>Fail when upstream file differes to local committed file. Package state will become "broken".</description>
     <allowedvalue>yes</allowedvalue>

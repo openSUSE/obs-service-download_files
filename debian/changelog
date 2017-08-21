@@ -1,3 +1,8 @@
+obs-service-download-files (0.6.0) stable; urgency=medium
+
+  * Enforce SSL verification
+
+ -- Adrian Schroeter <adrian@suse.de>  Wed, 16 Aug 2017 15:20:41 +0200
 obs-service-download-files (0.5.1) stable; urgency=medium
 
   * Initial release.
