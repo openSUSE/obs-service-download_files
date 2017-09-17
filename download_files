@@ -244,6 +244,7 @@ for i in *.spec PKGBUILD; do
     elif [ -z "$DORECOMPRESS" ]; then
       FILE="${url##*/}"
       if ! $WGET "$url$urlextension" -O "$FILE"; then
+        rm -f "$FILE"
         echo "ERROR: Failed to download \"$url\""
         exit 1
       fi
