@@ -229,8 +229,6 @@ for i in *.spec PKGBUILD; do
     SAMEFILEAFTERCOMPRESSION=
     [[ "${PROTOCOL}" != "http" && "${PROTOCOL}" != "https" && "${PROTOCOL}" != "ftp" ]] && continue
 
-    BN=`basename "$url"`
-      
     cd "$MYOUTDIR"
 
     # check local cache if configured
