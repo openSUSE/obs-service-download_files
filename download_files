@@ -241,7 +241,7 @@ for i in *.spec PKGBUILD; do
       cp -a -- "$MYCACHEDIRECTORY/file/$HASH" ./"$FILE"
     elif [ -z "$DORECOMPRESS" ]; then
       FILE="${url##*/}"
-      if ! $WGET "$url$urlextension" -O "$FILE"; then
+      if ! $WGET "$url" -O "$FILE"; then
         echo "ERROR: Failed to download \"$url\""
         exit 1
       fi
