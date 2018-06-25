@@ -229,8 +229,6 @@ for i in *.spec PKGBUILD; do
     SAMEFILEAFTERCOMPRESSION=
     [[ "${PROTOCOL}" != "http" && "${PROTOCOL}" != "https" && "${PROTOCOL}" != "ftp" ]] && continue
 
-    BN=`basename "$url"`
-      
     cd "$MYOUTDIR"
 
     # check local cache if configured
@@ -243,7 +241,8 @@ for i in *.spec PKGBUILD; do
       cp -a -- "$MYCACHEDIRECTORY/file/$HASH" ./"$FILE"
     elif [ -z "$DORECOMPRESS" ]; then
       FILE="${url##*/}"
-      if ! $WGET "$url$urlextension" -O "$FILE"; then
+
+      if ! $WGET -O "$FILE" -- "$url"; then
         rm -f "$FILE"
         echo "ERROR: Failed to download \"$url\""
         exit 1
@@ -253,7 +252,7 @@ for i in *.spec PKGBUILD; do
 
       FILE="${url##*/}"
       FORMAT="${url##*\.}"
-      if $WGET "$url" -O "$FILE"; then
+      if $WGET -O "$FILE" -- "$url"; then
         RECOMPRESS=
       elif $WGET "${url%\.$FORMAT}.gz" -O "${FILE%\.$FORMAT}.gz"; then
         RECOMPRESS="$FORMAT"

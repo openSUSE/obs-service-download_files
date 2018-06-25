@@ -14,8 +14,6 @@ install:
 	install -m 0644 download_files.service $(DESTDIR)$(servicedir)
 	install -d $(DESTDIR)$(serviceconfdir)
 	install -m 0644 download_files.rc $(DESTDIR)$(serviceconfdir)/download_files
-	install -d $(DESTDIR)$(servicecachedir)/download_files/file
-	install -d $(DESTDIR)$(servicecachedir)/download_files/filename
 
 test:
 	prove -v t/*.t
