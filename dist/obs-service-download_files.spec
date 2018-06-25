@@ -1,7 +1,7 @@
 #
 # spec file for package obs-service-download_files
 #
-# Copyright (c) 2017 SUSE LINUX GmbH, Nuernberg, Germany.
+# Copyright (c) 2018 SUSE LINUX GmbH, Nuernberg, Germany.
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -18,10 +18,10 @@
 
 %define service download_files
 Name:           obs-service-%{service}
-Version:        0.6.0.git.1502884469.0993a01
+Version:        0.6.0
 Release:        0
 Summary:        An OBS source service: download files
-License:        GPL-2.0+
+License:        GPL-2.0-or-later
 Group:          Development/Tools/Building
 Url:            https://github.com/openSUSE/obs-service-%{service}
 Source:         %{name}-%{version}.tar.gz
@@ -40,6 +40,7 @@ This service is parsing all spec files and downloads all Source files which are 
 %setup -q
 
 %build
+perl -p -i -e "s{#!/usr/bin/env bash}{#!/bin/bash}" download_files
 
 %install
 %makeinstall
