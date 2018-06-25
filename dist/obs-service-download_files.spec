@@ -44,10 +44,6 @@ This service is parsing all spec files and downloads all Source files which are 
 %install
 %makeinstall
 
-%pre
-%{_sbindir}/groupadd -r obsrun 2> /dev/null || :
-%{_sbindir}/useradd -r -s /bin/false -c "User for build service backend" -d %{_prefix}/lib/obs -g obsrun obsrun 2> /dev/null || :
-
 %files
 %defattr(-,root,root)
 %doc README.md
@@ -56,10 +52,5 @@ This service is parsing all spec files and downloads all Source files which are 
 %dir %{_sysconfdir}/obs
 %dir %{_sysconfdir}/obs/services
 %config(noreplace) %{_sysconfdir}/obs/services/*
-%dir %{_localstatedir}/cache/obs
-%defattr(-,obsrun,obsrun)
-%dir %{_localstatedir}/cache/obs/download_files
-%dir %{_localstatedir}/cache/obs/download_files/file
-%dir %{_localstatedir}/cache/obs/download_files/filename
 
 %changelog
