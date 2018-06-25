@@ -2,7 +2,13 @@ Source: obs-service-download-files
 Maintainer: Hib Eris <hib@hiberis.nl>
 Section: devel
 Priority: extra
-Build-Depends: debhelper (>= 7)
+Build-Depends: debhelper (>= 7),
+ build | obs-build,
+ libcgi-pm-perl,
+ libfile-type-perl,
+ libhttp-server-simple-perl,
+ libpath-class-perl,
+ wget,
 Standards-Version: 3.9.6
 Homepage: https://github.com/openSUSE/obs-service-download_files
 
