@@ -139,8 +139,8 @@ function write_changes() {
   local my_url=$2
   local bn=${my_url##*/}
 
-  if [ "$spec_file_name" = "PKGBUILD" ] ; then
-    echo "No support for writing PKGBUILD changes"
+  if [ "$spec_file_name" = "PKGBUILD" -o "$spec_file_name" = "appimage.yml" ] ; then
+    echo "No support for writing changes"
     return
   fi
 
@@ -219,7 +219,7 @@ default_config="/usr/lib/build/configs/sl12.3.conf"
 SRCDIR=$PWD
 
 RETURN=0
-for i in *.spec PKGBUILD; do
+for i in *.spec PKGBUILD appimage.yml; do
   test -e "$i" || continue
 
   for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources` `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" patches`; do
