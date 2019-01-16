@@ -28,6 +28,8 @@ Source:         %{name}-%{version}.tar.gz
 Requires:       build >= 2012.08.24
 Requires:       diffutils
 Requires:       wget
+# for appimage parser:
+Requires:       perl(YAML::XS)
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildArch:      noarch
 
