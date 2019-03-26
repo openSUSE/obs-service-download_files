@@ -15,7 +15,7 @@ CHANGES_GENERATE=disable
 CHANGES_AUTHOR=""
 CHANGES_LINES_MAX=30
 
-WGET="/usr/bin/wget --timeout=30 -q --tries=2 --no-directories"
+WGET="/usr/bin/wget --timeout=30 -nv --tries=2 --no-directories"
 # We do not tell the server that we are an OBS tool by default anymore,
 # because too many sites just have a white list, but they accept wget
 # WGET="$WGET -U 'OBS-wget'"
@@ -223,7 +223,6 @@ for i in *.spec PKGBUILD appimage.yml; do
   test -e "$i" || continue
 
   for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources` `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" patches`; do
-   
     MYCACHEDIRECTORY="$CACHEDIRECTORY"
     PROTOCOL="${url%%:*}"
     SAMEFILEAFTERCOMPRESSION=
