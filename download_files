@@ -225,6 +225,13 @@ for i in *.spec PKGBUILD appimage.yml; do
   for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources` `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" patches`; do
    
     MYCACHEDIRECTORY="$CACHEDIRECTORY"
+    FILE="${url##*/}"
+    # Arch supports the format OUT_FILE::PROTOCOL://url
+    if [ "$i" = "PKGBUILD" -a -z "${_url##*::*}" ]
+    then
+      FILE="${url%%::*}"
+      url="${url##*::}"
+    fi
     PROTOCOL="${url%%:*}"
     SAMEFILEAFTERCOMPRESSION=
     [[ "${PROTOCOL}" != "http" && "${PROTOCOL}" != "https" && "${PROTOCOL}" != "ftp" ]] && continue
@@ -240,8 +247,6 @@ for i in *.spec PKGBUILD appimage.yml; do
       echo "INFO: Taking file from local cache $FILE"
       cp -a -- "$MYCACHEDIRECTORY/file/$HASH" ./"$FILE"
     elif [ -z "$DORECOMPRESS" ]; then
-      FILE="${url##*/}"
-
       if ! $WGET -O "$FILE" -- "$url"; then
         rm -f "$FILE"
         echo "ERROR: Failed to download \"$url\""
@@ -249,8 +254,6 @@ for i in *.spec PKGBUILD appimage.yml; do
       fi
       RECOMPRESS=
     else
-
-      FILE="${url##*/}"
       FORMAT="${url##*\.}"
       if $WGET -O "$FILE" -- "$url"; then
         RECOMPRESS=
