@@ -31,8 +31,8 @@ Url:            https://github.com/openSUSE/obs-service-%{service}
 Source:         %{name}-%{version}.tar.gz
 Requires:       %{build_pkg_name} >= 2012.08.24
 Requires:       diffutils
+Requires:       curl
 # for appimage parser:
-Requires:       wget
 Requires:       perl(YAML::XS)
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildArch:      noarch
