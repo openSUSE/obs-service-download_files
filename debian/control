@@ -8,7 +8,7 @@ Build-Depends: debhelper (>= 7),
  libfile-type-perl,
  libhttp-server-simple-perl,
  libpath-class-perl,
- wget,
+ curl,
 Standards-Version: 3.9.6
 Homepage: https://github.com/openSUSE/obs-service-download_files
 

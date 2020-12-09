@@ -15,16 +15,16 @@ CHANGES_GENERATE=disable
 CHANGES_AUTHOR=""
 CHANGES_LINES_MAX=30
 
-WGET="/usr/bin/wget --timeout=30 -q --tries=2 --no-directories"
+CURL=(/usr/bin/curl --location --silent --connect-timeout 30 --retry 2)
 # We do not tell the server that we are an OBS tool by default anymore,
 # because too many sites just have a white list, but they accept wget
-# WGET="$WGET -U 'OBS-wget'"
+# CURL=("${CURL[@]}" -A 'OBS-wget')
 
 while test $# -gt 0; do
   case $1 in
     --enforceipv4)
       if [[ "$2" == "enable" ]]; then
-        WGET="$WGET -4"
+	CURL=("${CURL[@]}" -4)
       fi
       shift
     ;;
@@ -83,7 +83,7 @@ if [[ ! -d "${MYOUTDIR}" ]]; then
 fi
 
 if [[ -n "$NOSSLVALIDATION" ]]; then
-  WGET="$WGET --no-check-certificate"
+  CURL=("${CURL[@]}" --insecure)
 fi
 
 function uncompress_file() {
@@ -242,7 +242,10 @@ for i in *.spec PKGBUILD appimage.yml; do
     elif [ -z "$DORECOMPRESS" ]; then
       FILE="${url##*/}"
 
-      if ! $WGET -O "$FILE" -- "$url"; then
+      # avoid re-download if file exists with same modification time
+      [ -e "$SRCDIR/$FILE" -a "$ENFORCELOCAL" != "yes" ] && CURL=("${CURL[@]}" --time-cond $SRCDIR/$FILE)
+
+      if ! "${CURL[@]}" -R --output "$FILE" "$url"; then
         rm -f "$FILE"
         echo "ERROR: Failed to download \"$url\""
         exit 1
@@ -252,15 +255,15 @@ for i in *.spec PKGBUILD appimage.yml; do
 
       FILE="${url##*/}"
       FORMAT="${url##*\.}"
-      if $WGET -O "$FILE" -- "$url"; then
+      if "${CURL[@]}" -R --output "$FILE" "$url"; then
         RECOMPRESS=
-      elif $WGET "${url%\.$FORMAT}.gz" -O "${FILE%\.$FORMAT}.gz"; then
+      elif "${CURL[@]}" -R --output "${FILE%\.$FORMAT}.gz" "${url%\.$FORMAT}.gz"; then
         RECOMPRESS="$FORMAT"
         FILE="${FILE%\.$FORMAT}.gz"
-      elif $WGET "${url%\.$FORMAT}.bz2" -O "${FILE%\.$FORMAT}.bz2"; then
+      elif "${CURL[@]}" -R --output "${FILE%\.$FORMAT}.bz2" "${url%\.$FORMAT}.bz2"; then
         RECOMPRESS="$FORMAT"
         FILE="${FILE%\.$FORMAT}.bz2"
-      elif $WGET "${url%\.$FORMAT}.xz" -O "${FILE%\.$FORMAT}.xz"; then
+      elif "${CURL[@]}" -R --output "${FILE%\.$FORMAT}.xz" "${url%\.$FORMAT}.xz"; then
         RECOMPRESS="$FORMAT"
         FILE="${FILE%\.$FORMAT}.xz"
       else
