@@ -242,8 +242,9 @@ for i in *.spec PKGBUILD appimage.yml; do
     elif [ -z "$DORECOMPRESS" ]; then
       FILE="${url##*/}"
 
-      # avoid re-download if file exists with same modification time
-      [ -e "$SRCDIR/$FILE" -a "$ENFORCELOCAL" != "yes" ] && CURL=("${CURL[@]}" --time-cond $SRCDIR/$FILE)
+      # avoid re-download if file exists with same modification time and we do not
+      # enforce a download via enforceupstream.
+      [ -e "$SRCDIR/$FILE" -a "$ENFORCELOCAL" != "yes" -a "$ENFORCEUPSTREAM" != "yes" ] && CURL=("${CURL[@]}" --time-cond $SRCDIR/$FILE)
 
       if ! "${CURL[@]}" -R --output "$FILE" "$url"; then
         rm -f "$FILE"
