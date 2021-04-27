@@ -2,6 +2,12 @@ Source: obs-service-download-files
 Maintainer: Hib Eris <hib@hiberis.nl>
 Section: devel
 Priority: extra
+Depends: build | obs-build,
+ libcgi-pm-perl,
+ libfile-type-perl,
+ libhttp-server-simple-perl,
+ libpath-class-perl,
+ curl,
 Build-Depends: debhelper (>= 7),
  build | obs-build,
  libcgi-pm-perl,
