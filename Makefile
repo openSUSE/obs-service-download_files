@@ -18,4 +18,7 @@ install:
 test:
 	prove -v t/*.t
 
+clean:
+	rm -rf t/tmp/
+
 .PHONY: all install test

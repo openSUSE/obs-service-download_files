@@ -2,12 +2,6 @@ Source: obs-service-download-files
 Maintainer: Hib Eris <hib@hiberis.nl>
 Section: devel
 Priority: extra
-Depends: build | obs-build,
- libcgi-pm-perl,
- libfile-type-perl,
- libhttp-server-simple-perl,
- libpath-class-perl,
- curl,
 Build-Depends: debhelper (>= 7),
  build | obs-build,
  libcgi-pm-perl,
@@ -15,6 +9,9 @@ Build-Depends: debhelper (>= 7),
  libhttp-server-simple-perl,
  libpath-class-perl,
  curl,
+ bzip2,
+ make,
+ tar
 Standards-Version: 3.9.6
 Homepage: https://github.com/openSUSE/obs-service-download_files
 
@@ -25,3 +22,9 @@ Description: An OBS source service: download files
  .
  This service is parsing all spec files and downloads all Source files which
  are specified via a http, https or ftp url.
+Depends: build | obs-build,
+ libcgi-pm-perl,
+ libfile-type-perl,
+ libhttp-server-simple-perl,
+ libpath-class-perl,
+ curl,

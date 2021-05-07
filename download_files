@@ -256,18 +256,29 @@ for i in *.spec PKGBUILD appimage.yml; do
 
       FILE="${url##*/}"
       FORMAT="${url##*\.}"
-      if "${CURL[@]}" -R --output "$FILE" "$url"; then
-        RECOMPRESS=
-      elif "${CURL[@]}" -R --output "${FILE%\.$FORMAT}.gz" "${url%\.$FORMAT}.gz"; then
-        RECOMPRESS="$FORMAT"
-        FILE="${FILE%\.$FORMAT}.gz"
-      elif "${CURL[@]}" -R --output "${FILE%\.$FORMAT}.bz2" "${url%\.$FORMAT}.bz2"; then
-        RECOMPRESS="$FORMAT"
-        FILE="${FILE%\.$FORMAT}.bz2"
-      elif "${CURL[@]}" -R --output "${FILE%\.$FORMAT}.xz" "${url%\.$FORMAT}.xz"; then
-        RECOMPRESS="$FORMAT"
-        FILE="${FILE%\.$FORMAT}.xz"
-      else
+      SUCCESS=0
+      for i in "" ".gz" ".bz2" ".xz"
+      do
+        if [ -n "$i" ];then
+	  OF="${FILE%\.$FORMAT}$i"
+	  URL="${url%\.$FORMAT}$i"
+	  FMT=$FORMAT
+	else
+          OF=$FILE
+          URL=$url
+	  FMT=
+	fi
+        HTTP_CODE=$("${CURL[@]}" -R --output "$OF" "$URL" --write-out "%{http_code}")
+	if [[ ${HTTP_CODE} -ge 200 && ${HTTP_CODE} -lt 299 ]] ; then
+	  SUCCESS=1
+	  FILE=$OF
+	  RECOMPRESS="$FMT"
+	  break
+	else
+	  rm -f $OF
+	fi
+      done
+      if [ "$SUCCESS" -lt 1 ]; then
         echo "ERROR: Failed to download $url or any other compression format"
         exit 1
       fi
