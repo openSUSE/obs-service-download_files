@@ -1,3 +1,11 @@
+obs-service-download-files (0.8.0) UNRELEASED; urgency=medium
+
+  * Fixed '--recompress' feature
+  * Fixed test suite
+  * Updated BuildDepends and Depends
+
+ -- Frank Schreiner <fschreiner@suse.de>  Fri, 07 May 2021 09:34:27 +0200
+
 obs-service-download-files (0.6.0) stable; urgency=medium
 
   * Enforce SSL verification
