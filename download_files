@@ -244,9 +244,9 @@ for i in *.spec PKGBUILD appimage.yml; do
 
       # avoid re-download if file exists with same modification time and we do not
       # enforce a download via enforceupstream.
-      [ -e "$SRCDIR/$FILE" -a "$ENFORCELOCAL" != "yes" -a "$ENFORCEUPSTREAM" != "yes" ] && CURL=("${CURL[@]}" --time-cond $SRCDIR/$FILE)
+      [ -e "$SRCDIR/$FILE" -a "$ENFORCELOCAL" != "yes" -a "$ENFORCEUPSTREAM" != "yes" ] && CURLCMD=("${CURL[@]}" --time-cond $SRCDIR/$FILE) || CURLCMD=("${CURL[@]}")
 
-      if ! "${CURL[@]}" -R --output "$FILE" "$url"; then
+      if ! "${CURLCMD[@]}" -R --output "$FILE" "$url"; then
         rm -f "$FILE"
         echo "ERROR: Failed to download \"$url\""
         exit 1
