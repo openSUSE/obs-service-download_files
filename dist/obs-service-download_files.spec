@@ -27,14 +27,14 @@ Release:        0
 Summary:        An OBS source service: download files
 License:        GPL-2.0-or-later
 Group:          Development/Tools/Building
-Url:            https://github.com/openSUSE/obs-service-%{service}
-Source:         %{name}-%{version}.tar.gz
 BuildRequires:  perl-Path-Class
 BuildRequires:  perl-HTTP-Server-Simple
 BuildRequires:  perl-File-Type
 BuildRequires:  make
 BuildRequires:  tar
 BuildRequires:  build
+URL:            https://github.com/openSUSE/obs-service-%{service}
+Source0:        %{url}/archive/%{version}/%{name}-%{version}.tar.gz
 BuildRequires:  bzip2
 Requires:       %{build_pkg_name} >= 2012.08.24
 Requires:       diffutils
