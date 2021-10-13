@@ -234,6 +234,13 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
   for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources` `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" patches`; do
    
     MYCACHEDIRECTORY="$CACHEDIRECTORY"
+
+    if [ "$i" = "PKGBUILD" -a -z "${url##*::*}" ]
+    then
+      FILE="${url%%::*}"
+      url="${url#*::}"
+    fi
+
     PROTOCOL="${url%%:*}"
     SAMEFILEAFTERCOMPRESSION=
     [[ "${PROTOCOL}" != "http" && "${PROTOCOL}" != "https" && "${PROTOCOL}" != "ftp" ]] && continue
@@ -249,8 +256,6 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
       echo "INFO: Taking file from local cache $FILE"
       cp -a -- "$MYCACHEDIRECTORY/file/$HASH" ./"$FILE"
     elif [ -z "$DORECOMPRESS" ]; then
-      FILE="${url##*/}"
-
       # avoid re-download if file exists with same modification time and we do not
       # enforce a download via enforceupstream.
       [ -e "$SRCDIR/$FILE" -a "$ENFORCELOCAL" != "yes" -a "$ENFORCEUPSTREAM" != "yes" ] && CURLCMD=("${CURL[@]}" --time-cond $SRCDIR/$FILE) || CURLCMD=("${CURL[@]}")
@@ -262,8 +267,6 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
       fi
       RECOMPRESS=
     else
-
-      FILE="${url##*/}"
       FORMAT="${url##*\.}"
       SUCCESS=0
       for i in "" ".gz" ".bz2" ".xz"
