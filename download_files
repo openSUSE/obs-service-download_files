@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-
-# downloads files specified in spec files
+# downloads files specified in spec files (or PKGBUILD, appimage.yml and so on)
 
 # config options for this host ?
 [[ -f /etc/obs/services/download_files ]] && . /etc/obs/services/download_files
@@ -235,11 +234,19 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
    
     MYCACHEDIRECTORY="$CACHEDIRECTORY"
 
-    if [ "$i" = "PKGBUILD" -a -z "${url##*::*}" ]
-    then
-      FILE="${url%%::*}"
-      url="${url#*::}"
+    if [ "$i" = "PKGBUILD" ]; then
+      if [ -z "${url##*::*}" ]; then
+        FILE="${url%%::*}"
+        url="${url#*::}"
+      fi
+    else
+      # If file name has been specified in the Source: tag use it (Format: Source:  <URL>[#/filename]).
+      if [ -z "${url##*\#/*}" ]; then
+        FILE=${url##*#/}
+        url=${url%#/*}
+      fi
     fi
+    [ -z "$FILE" ] && FILE="${url##*/}"
 
     PROTOCOL="${url%%:*}"
     SAMEFILEAFTERCOMPRESSION=
@@ -267,6 +274,7 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
       fi
       RECOMPRESS=
     else
+
       FORMAT="${url##*\.}"
       SUCCESS=0
       for i in "" ".gz" ".bz2" ".xz"
