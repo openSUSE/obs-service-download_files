@@ -218,8 +218,17 @@ default_config="/usr/lib/build/configs/sl12.3.conf"
 
 SRCDIR=$PWD
 
+declare -A spec_files
+for i in *.spec; do
+  basespec=$(echo ${i##*:})
+  existing_longest=$(echo ${spec_files[${basespec}]})
+  if [[ ${#i} -gt ${#existing_longest} ]]; then
+    spec_files[${basespec}]=$i
+  fi
+done
+
 RETURN=0
-for i in *.spec PKGBUILD appimage.yml; do
+for i in ${spec_files[@]} PKGBUILD appimage.yml; do
   test -e "$i" || continue
 
   for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources` `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" patches`; do
