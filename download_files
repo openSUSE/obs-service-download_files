@@ -233,7 +233,7 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
   for url in `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" sources` `perl -I/usr/lib/build -MBuild -e Build::show $default_config "$i" patches`; do
    
     MYCACHEDIRECTORY="$CACHEDIRECTORY"
-
+    FILE=""
     if [ "$i" = "PKGBUILD" ]; then
       if [ -z "${url##*::*}" ]; then
         FILE="${url%%::*}"
