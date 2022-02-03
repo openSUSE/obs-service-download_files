@@ -103,6 +103,9 @@ function uncompress_file() {
   elif [[ "${FILE%.xz}" != "${input}" ]]; then
     uncompress="xz -dc"
     basename="${input%.xz}"
+  elif [[ "${FILE%.zst}" != "${input}" ]]; then
+    uncompress="zstd -dc"
+    basename="${input%.zst}"
   fi
 
   $uncompress "$input" > "$output"
@@ -277,7 +280,7 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
 
       FORMAT="${url##*\.}"
       SUCCESS=0
-      for i in "" ".gz" ".bz2" ".xz"
+      for i in "" ".gz" ".bz2" ".xz" ".zst"
       do
         if [ -n "$i" ];then
 	  OF="${FILE%\.$FORMAT}$i"
@@ -336,6 +339,9 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
         elif [ "$RECOMPRESS" == "xz" ]; then
           COMPRESS="xz -c -"
           SUFFIX=".xz"
+        elif [ "$RECOMPRESS" == "zst" ]; then
+          COMPRESS="zstd -12 -c -"
+          SUFFIX=".zst"
         elif [ "$RECOMPRESS" == "none" ]; then
           COMPRESS="cat -"
           SUFFIX=""
