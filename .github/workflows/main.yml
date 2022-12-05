@@ -1,0 +1,17 @@
+name: Example setup with docker
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build Container
+      run: docker build -t test:latest .github
+
+    - name: Start Container
+      run: docker run --privileged -v $(pwd):/gh-actions test:latest
