@@ -270,7 +270,7 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
       # enforce a download via enforceupstream.
       [ -e "$SRCDIR/$FILE" -a "$ENFORCELOCAL" != "yes" -a "$ENFORCEUPSTREAM" != "yes" ] && CURLCMD=("${CURL[@]}" --time-cond $SRCDIR/$FILE) || CURLCMD=("${CURL[@]}")
 
-      if ! "${CURLCMD[@]}" -R --output "$FILE" "$url"; then
+      if ! "${CURLCMD[@]}" -f -R --output "$FILE" "$url"; then
         rm -f "$FILE"
         echo "ERROR: Failed to download \"$url\""
         exit 1
@@ -291,8 +291,7 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
           URL=$url
 	  FMT=
 	fi
-        HTTP_CODE=$("${CURL[@]}" -R --output "$OF" "$URL" --write-out "%{http_code}")
-	if [[ ${HTTP_CODE} -ge 200 && ${HTTP_CODE} -lt 299 ]] ; then
+        if "${CURL[@]}" -f -R --output "$OF" "$URL" ; then
 	  SUCCESS=1
 	  FILE=$OF
 	  RECOMPRESS="$FMT"
