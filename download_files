@@ -214,6 +214,10 @@ $(LC_ALL=POSIX TZ=UTC date) - ${CHANGES_AUTHOR}
   echo "$change_entry" | cat - $changes_file > "$tmpfile" && mv -- "$tmpfile" "$MYOUTDIR/$(basename $changes_file)"
 }
 
+function normalize_patch() {
+    sed -e "/^index [a-f0-9]\+\.\.[a-f0-9]\+ [0-9]\{6\}/s@\(index [0-9a-f]\{7\}\)[0-9a-f]*\(\.\.[0-9a-f]\{7\}\)[0-9a-f]*\( [0-9]\{6\}\)@\1\2\3@" \
+	< "$1" > "$2"
+}
 
 default_config="/usr/lib/build/configs/sl12.3.conf"
 [ -e "/usr/lib/build/configs/default.conf" ] && default_config="/usr/lib/build/configs/default.conf"
@@ -367,7 +371,18 @@ for i in ${spec_files[@]} PKGBUILD appimage.yml; do
     if [ -f "$SRCDIR/$FILE" ]; then
        if [ ! "$FILE" -ef "$SRCDIR/$FILE" ]; then
          if [ -z "$SAMEFILEAFTERCOMPRESSION" ]; then
-           if cmp "$FILE" "$SRCDIR/$FILE" 2>/dev/null; then
+             # if patch file, normaize index line and check again
+           if [[ "$FILE" =~ .*\.patch ]]; then
+             normalize_patch "$FILE" "${FILE}-tmp"
+             normalize_patch "$SRCDIR/$FILE" "$SRCDIR/${FILE}-tmp"
+             cmp "${FILE}-tmp" "$SRCDIR/${FILE}-tmp" 2>/dev/null
+             ret=$?
+	     rm -f "${FILE}-tmp" "$SRCDIR/${FILE}-tmp"
+           else
+             cmp "$FILE" "$SRCDIR/$FILE" 2>/dev/null
+	     ret=$?
+           fi
+           if [ $ret == 0 ]; then
               rm "$FILE"
            elif [ -n "$ENFORCEUPSTREAM" ]; then
              echo "ERROR: download_files is configured to fail when the upstream file is different than the committed file... this is the case!"
